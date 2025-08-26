@@ -1,16 +1,42 @@
-## Hi there 👋
+<h1 align = "center">
+	Simon Ramirez <br>
+  <a href = "https://www.linkedin.com/in/simon-ramirezcs/">
+	  <img src="https://img.shields.io/badge/-LinkedIn-0077B5?logo=linkedin&logoColor=white&style=flat" alt="LinkedIn">
+  </a>
+</h1>
+<h3 align = "center">
+	👋 Hi, I’m Simon. A Computer Science student at Stony Brook University.
+  </h3>
+  <h3 align = "center">
+  💻 Interested in quantitative development, full-stack engineering, and AI/ML research
+</h3>
 
-<!--
-**its-Simy/its-Simy** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
+<div align="center">
+  <img src="https://github-readme-stats.vercel.app/api?username=its-Simy&theme=tokyonight&show_icons=true&hide_border=true&count_private=true" height="170" alt="stats graph" />
+  <img src="https://github-readme-stats.vercel.app/api/top-langs/?username=its-Simy&theme=tokyonight&show_icons=true&hide_border=true&layout=compact" height="170" alt="languages graph" />
+</div>
+<hr>
+<h1 align = "center"> My Tools and Technologies </h1>
 
-Here are some ideas to get you started:
+<p align="center">
+	<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/html5/html5-original.svg" height = "50" width = "50"/>
+	<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/css3/css3-original.svg" height = "50" width = "50"/>
+	<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/tailwindcss/tailwindcss-original.svg" height = "50" />
+        <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/javascript/javascript-original.svg" height = "50" width= "50"/>
+        <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/vscode/vscode-original.svg" height = "50" width = "50" />
+        <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/git/git-original.svg" height = "50" width = "50" />
+        <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/python/python-original.svg" height="50" width="50" />
+        <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/java/java-original.svg" height="50" width="50" />
+	<img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/github/github-original.svg" height = "50" width = "50" />
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/react/react-original.svg" height="50" width="50" />
+</p>
+<hr>
 
-- 🔭 I’m currently working on ...
-- 🌱 I’m currently learning ...
-- 👯 I’m looking to collaborate on ...
-- 🤔 I’m looking for help with ...
-- 💬 Ask me about ...
-- 📫 How to reach me: ...
-- 😄 Pronouns: ...
-- ⚡ Fun fact: ...
--->
+<h2 align = "center">🌐 Connect with Me</h2>
+<p align = "center">
+	💌Email: <br> <a href = "simon.ramirez@stonybrook.edu">simon.ramirez@stonybrook.edu</a> <br>
+</p>
+<hr border = "1px solid gray"></hr>
+<p align = "center">
+	<i>"Simplicity reveals strength; the less you add, the more it speaks"</i> <br> -Simon
+</p>
