@@ -34,7 +34,8 @@
 
 <h2 align = "center">🌐 Connect with Me</h2>
 <p align = "center">
-	💌Email: <br> <a href = "simon.ramirez@stonybrook.edu">simon.ramirez@stonybrook.edu</a> <br>
+	<br> <a href = "simon.ramirez@stonybrook.edu">Email</a> <br>
+	<a href = "https://www.linkedin.com/in/simon-ramirezcs/">Linkedin</a> <br>
 </p>
 <hr border = "1px solid gray"></hr>
 <p align = "center">
