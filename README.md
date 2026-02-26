@@ -8,7 +8,7 @@
 	👋 Hi, I’m Simon. A Computer Science student at Stony Brook University.
   </h3>
   <h3 align = "center">
-  💻 Interested in quantitative development, full-stack engineering, and AI/ML research
+  💻 Interested in Backend Development
 </h3>
 
 <div align="center">
