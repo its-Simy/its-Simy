@@ -3,13 +3,17 @@
 
 Usage: python3 scripts/contrib.py <user> <out.svg> [--demo]
 Needs GITHUB_TOKEN in the environment (the Actions token is enough). Standard library only.
+Days are bucketed by local calendar day in CONTRIB_TZ (default America/New_York).
 """
 import datetime as dt
 import json
 import os
 import random
+import re
 import sys
+import tempfile
 import urllib.request
+from zoneinfo import ZoneInfo
 
 BG, BG2, BG4 = "#1d2021", "#3c3836", "#665c54"
 FG, FG0, FG4, GREY = "#ebdbb2", "#fbf1c7", "#a89984", "#928374"
@@ -19,28 +23,81 @@ FONT = "ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',m
 W, CW = 1000, 7.8
 WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 
-QUERY = """query($login:String!){user(login:$login){contributionsCollection{contributionCalendar{
+# GitHub usernames: 1-39 chars, alphanumeric or single hyphens, no leading/trailing hyphen.
+LOGIN_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}$")
+MAX_RESPONSE = 5_000_000  # bytes; the real calendar response is a few dozen KB
+
+
+def load_tz():
+    name = os.environ.get("CONTRIB_TZ", "America/New_York")
+    try:
+        return ZoneInfo(name)
+    except Exception:
+        print(f"warning: bad CONTRIB_TZ {name!r}, using America/New_York", file=sys.stderr)
+        return ZoneInfo("America/New_York")
+
+
+TZ = load_tz()
+
+QUERY = """query($login:String!,$from:DateTime!,$to:DateTime!){user(login:$login){
+contributionsCollection(from:$from,to:$to){contributionCalendar{
 totalContributions weeks{contributionDays{date contributionCount weekday}}}}}}"""
 
 
+def window():
+    """Last 365 calendar days in TZ, offset-aware so GitHub splits days at local midnight."""
+    now = dt.datetime.now(TZ).replace(microsecond=0)
+    start = dt.datetime.combine(now.date() - dt.timedelta(days=364), dt.time(), TZ)
+    return start, now
+
+
+def parse_day(d):
+    """Validate one day from the API so nothing unexpected reaches the SVG."""
+    date = dt.date.fromisoformat(str(d["date"]))
+    count = int(d["contributionCount"])
+    weekday = int(d["weekday"])
+    if count < 0 or not 0 <= weekday <= 6:
+        raise ValueError(f"unexpected day data: {d!r}")
+    return date, count, weekday
+
+
 def fetch(login):
+    token = os.environ.get("GITHUB_TOKEN")
+    if not token:
+        raise SystemExit("GITHUB_TOKEN is not set")
+    start, end = window()
+    variables = {"login": login, "from": start.isoformat(), "to": end.isoformat()}
     req = urllib.request.Request(
         "https://api.github.com/graphql",
-        data=json.dumps({"query": QUERY, "variables": {"login": login}}).encode(),
-        headers={"Authorization": f"bearer {os.environ['GITHUB_TOKEN']}",
+        data=json.dumps({"query": QUERY, "variables": variables}).encode(),
+        headers={"Authorization": f"bearer {token}",
                  "Content-Type": "application/json", "User-Agent": "contrib.py"})
     with urllib.request.urlopen(req, timeout=30) as r:
-        data = json.load(r)
+        raw = r.read(MAX_RESPONSE + 1)
+    if len(raw) > MAX_RESPONSE:
+        raise SystemExit("GraphQL response unexpectedly large")
+    data = json.loads(raw)
     if data.get("errors"):
         raise SystemExit(f"GraphQL error: {data['errors']}")
-    weeks = data["data"]["user"]["contributionsCollection"]["contributionCalendar"]["weeks"]
-    return [[(dt.date.fromisoformat(d["date"]), d["contributionCount"], d["weekday"])
-             for d in w["contributionDays"]] for w in weeks]
+    user = (data.get("data") or {}).get("user")
+    if not user:
+        raise SystemExit(f"user {login!r} not found")
+    weeks = user["contributionsCollection"]["contributionCalendar"]["weeks"]
+    today = end.date()
+    out = []
+    for w in weeks:
+        days = [parse_day(d) for d in w["contributionDays"]]
+        days = [d for d in days if d[0] <= today]     # never show "tomorrow"
+        if days:
+            out.append(days)
+    if not out:
+        raise SystemExit("no contribution data returned")
+    return out
 
 
 def demo():
     rng = random.Random(1729)
-    end = dt.date.today()
+    end = dt.datetime.now(TZ).date()
     start = end - dt.timedelta(days=364 + (end.weekday() + 1) % 7)
     weeks, week = [], []
     day = start
@@ -56,7 +113,8 @@ def demo():
 
 
 def esc(s):
-    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    return (str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            .replace('"', "&quot;").replace("'", "&#39;"))
 
 
 def mono(x, y, s, fill, size=13, cw=None, anchor=None, weight=None):
@@ -87,7 +145,7 @@ def stats(days):
         run = run + 1 if c else 0
         longest = max(longest, run)
     current = 0
-    tail = days[:-1] if days and days[-1][1] == 0 else days     # today may still be empty
+    tail = days[:-1] if days and days[-1][1] == 0 else days     # today (local) may still be empty
     for _, c, _ in reversed(tail):
         if not c:
             break
@@ -145,7 +203,8 @@ def render(weeks, login):
         last_month = month
         for day, c, wd in week:
             out.append(f'<rect class="c" x="{gx + wi*pitch}" y="{gy + wd*pitch}" width="{cell}" height="{cell}" rx="2" '
-                       f'fill="{LEVELS[lvl(c)]}" style="animation-delay:{t1 + wi*0.018:.2f}s"><title>{day} · {c}</title></rect>')
+                       f'fill="{LEVELS[lvl(c)]}" style="animation-delay:{t1 + wi*0.018:.2f}s">'
+                       f'<title>{esc(day)} · {int(c)}</title></rect>')
     for wd in (1, 3, 5):
         out.append(mono(gx - 10, gy + wd*pitch + 10, WEEKDAYS[wd], GREY, 10, anchor="end"))
     ly = gy + 7*pitch + 16
@@ -160,7 +219,7 @@ def render(weeks, login):
     recent = days[-31:]
     cx0, cy0, cw_, ch_ = gx, ly + 34, right - gx, 82
     top = max(1, max(c for _, c, _ in recent))
-    pts = [(cx0 + i/(len(recent) - 1)*cw_, cy0 + ch_ - c/top*ch_) for i, (_, c, _) in enumerate(recent)]
+    pts = [(cx0 + i/max(1, len(recent) - 1)*cw_, cy0 + ch_ - c/top*ch_) for i, (_, c, _) in enumerate(recent)]
     out.append(line(cx0, cy0 - 10, [("last 31 days", FG4)], 11, 6.6))
     for q in range(3):
         y = cy0 + ch_*q/2
@@ -175,10 +234,11 @@ def render(weeks, login):
                f'stroke-linejoin="round" style="animation-delay:{d_start:.2f}s"/>')
     out.append(f'<g class="ar" style="animation-delay:{d_start + 0.8:.2f}s">'
                + "".join(f'<rect x="{x - 1.5:.1f}" y="{y - 1.5:.1f}" width="3" height="3" fill="{FG0}"/>' for x, y in pts) + "</g>")
+    last = len(recent) - 1
     for i in (0, 15, 30):
-        if i < len(recent):
+        if i <= last:
             out.append(mono(pts[i][0], cy0 + ch_ + 16, f"{recent[i][0]:%m-%d}",
-                            GREY, 10, anchor="middle" if 0 < i < 30 else ("start" if i == 0 else "end")))
+                            GREY, 10, anchor="middle" if 0 < i < last else ("start" if i == 0 else "end")))
 
     css = """
 .o{animation:show .35s ease-out both}.c{animation:show .4s ease-out both}.ar{animation:show .6s ease-out both}
@@ -198,10 +258,29 @@ def render(weeks, login):
         "".join(s), f'<g class="o" style="animation-delay:{t1:.2f}s">{"".join(out)}</g>', "</g></svg>"])
 
 
+def write_atomic(path, text):
+    """Write to a temp file then rename, so a failed run never leaves a half-written SVG."""
+    folder = os.path.dirname(path) or "."
+    os.makedirs(folder, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(dir=folder, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(text)
+        os.replace(tmp, path)
+    except BaseException:
+        os.unlink(tmp)
+        raise
+
+
 if __name__ == "__main__":
-    login, path = sys.argv[1], sys.argv[2]
+    args = [a for a in sys.argv[1:] if a != "--demo"]
+    if len(args) != 2:
+        raise SystemExit(__doc__)
+    login, path = args
+    if not LOGIN_RE.match(login):
+        raise SystemExit(f"invalid GitHub username: {login!r}")
+    if not path.endswith(".svg"):
+        raise SystemExit("output path must end in .svg")
     weeks = demo() if "--demo" in sys.argv else fetch(login)
-    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-    with open(path, "w") as f:
-        f.write(render(weeks, login))
+    write_atomic(path, render(weeks, login))
     print(f"wrote {path}")
